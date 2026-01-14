@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PitchSide Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      body {
+        background-color: #0f172a;
+        color: #f1f5f9;
+        overflow: hidden;
+        height: 100vh;
+      }
+      .sidebar-transition {
+        transition: width 0.3s ease;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+      .active-tab {
+        background-color: rgba(22, 163, 74, 0.2);
+        color: #4ade80;
+        border: 1px solid rgba(22, 163, 74, 0.3);
+      }
+      iframe {
+        width: 100%;
+        border: none;
+      }
+    </style>
+  </head>
+  <body class="flex">
+    <!-- Sidebar -->
+    <aside
+      id="sidebar"
+      class="sidebar-transition w-64 bg-slate-950 border-r border-slate-800 flex flex-col h-full shrink-0"
+    >
+      <div
+        class="p-4 flex items-center justify-between border-b border-slate-800"
+      >
+        <h1
+          id="logo-text"
+          class="font-bold text-xl text-green-400 tracking-tight"
+        >
+          PitchSide
+        </h1>
+        <button
+          onclick="toggleSidebar()"
+          class="p-1 hover:bg-slate-800 rounded"
+        >
+          <i data-lucide="menu" size="20"></i>
+        </button>
+      </div>
+
+      <div
+        id="tabs-list"
+        class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1"
+      >
+        <!-- Tabs injected here -->
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+      <!-- Header -->
+      <header
+        id="app-header"
+        class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 hidden"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            id="header-icon"
+            class="p-2 bg-slate-800 rounded-lg text-green-400"
+          ></div>
+          <h2 id="header-title" class="text-xl font-bold"></h2>
+          <span
+            id="header-type"
+            class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 uppercase tracking-wider font-bold"
+          ></span>
+        </div>
+
+        <button
+          onclick="toggleEditMode()"
+          id="edit-btn"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+        >
+          <i data-lucide="settings" size="16"></i>
+          <span id="edit-btn-text">Configure</span>
+        </button>
+      </header>
+
+      <!-- Content Area -->
+      <div
+        id="content-area"
+        class="flex-1 overflow-y-auto p-6 custom-scrollbar relative"
+      >
+        <div
+          id="welcome-state"
+          class="flex flex-col items-center justify-center h-full text-slate-500"
+        >
+          <p>Select a tab to view content</p>
+        </div>
+
+        <!-- View Mode Wrapper -->
+        <div id="view-mode" class="max-w-6xl mx-auto hidden">
+          <div
+            id="embed-container"
+            class="bg-slate-900 rounded-xl overflow-hidden min-h-[500px]"
+          ></div>
+          <!-- Empty State within View Mode -->
+          <div
+            id="empty-widget-state"
+            class="hidden flex flex-col items-center justify-center py-20 text-slate-500 space-y-4"
+          >
+            <div
+              class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center"
+            >
+              <i data-lucide="layout" size="32" class="opacity-50"></i>
+            </div>
+            <div class="text-center">
+              <h3 class="text-lg font-medium text-slate-300">
+                No Widget Configured
+              </h3>
+              <p class="text-sm max-w-xs mx-auto mt-1">
+                Click "Configure" to paste your embed code.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Edit Mode Panel -->
+        <div id="edit-panel" class="max-w-3xl mx-auto hidden space-y-4">
+          <div
+            class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-xl"
+          >
+            <h3
+              class="text-lg font-medium text-white mb-2 flex items-center gap-2"
+            >
+              <i data-lucide="edit-3" size="18" class="text-green-400"></i>
+              Configure Embed
+            </h3>
+            <p class="text-slate-400 text-sm mb-4">
+              Paste the SofaScore code or any iframe/script widget below.
+            </p>
+            <textarea
+              id="embed-textarea"
+              class="w-full h-64 bg-slate-950 border border-slate-700 rounded-lg p-4 font-mono text-sm text-slate-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"
+            ></textarea>
+            <div class="mt-4 flex justify-end">
+              <button
+                onclick="saveEmbed()"
+                class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Add Tab Modal -->
+    <div
+      id="modal-overlay"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl"
+      >
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-bold text-white">Add New Tab</h3>
+          <button
+            onclick="closeModal()"
+            class="text-slate-400 hover:text-white"
+          >
+            <i data-lucide="x" size="20"></i>
+          </button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-1"
+              >Title</label
+            >
+            <input
+              id="modal-title"
+              type="text"
+              placeholder="e.g. Premier League"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-400 mb-3"
+              >Type</label
+            >
+            <div class="grid grid-cols-3 gap-3">
+              <label class="cursor-pointer group">
+                <input
+                  type="radio"
+                  name="modal-type"
+                  value="league"
+                  checked
+                  class="peer sr-only"
+                />
+                <div
+                  class="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-800 peer-checked:bg-green-600/10 peer-checked:border-green-600 peer-checked:text-green-400 hover:bg-slate-800"
+                >
+                  <i data-lucide="trophy" size="20"></i>
+                  <span class="text-xs font-medium">League</span>
+                </div>
+              </label>
+              <label class="cursor-pointer group">
+                <input
+                  type="radio"
+                  name="modal-type"
+                  value="cup"
+                  class="peer sr-only"
+                />
+                <div
+                  class="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-800 peer-checked:bg-green-600/10 peer-checked:border-green-600 peer-checked:text-green-400 hover:bg-slate-800"
+                >
+                  <i data-lucide="shield" size="20"></i>
+                  <span class="text-xs font-medium">Cup</span>
+                </div>
+              </label>
+              <label class="cursor-pointer group">
+                <input
+                  type="radio"
+                  name="modal-type"
+                  value="club"
+                  class="peer sr-only"
+                />
+                <div
+                  class="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-800 peer-checked:bg-green-600/10 peer-checked:border-green-600 peer-checked:text-green-400 hover:bg-slate-800"
+                >
+                  <i data-lucide="users" size="20"></i>
+                  <span class="text-xs font-medium">Club</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          <button
+            onclick="addNewTab()"
+            class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg mt-4 transition-colors"
+          >
+            Create Tab
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- CONFIGURATION AREA ---
+      // Manually add your data here. ID must be unique.
+      let sections = [
+        {
+          id: "laliga",
+          type: "league",
+          title: "La Liga",
+          embedCode: `<iframe id="sofa-standings-embed-36-77559" src="https://widgets.sofascore.com/embed/tournament/36/season/77559/standings/LaLiga%2025%2F26?widgetTitle=LaLiga%2025%2F26&showCompetitionLogo=true" style=height:1123px!important;max-width:768px!important;width:100%!important; frameborder="0" scrolling="no"></iframe>
+    <div style="font-size:12px;font-family:Arial,sans-serif;text-align:left">
+      Standings provided by <a target="_blank" href="https://www.sofascore.com/tournament/football/spain/laliga/8#id:77559">Sofascore</a>
+    </div>`,
+        },
+
+        {
+          id: "copadelrey",
+          type: "cup",
+          title: "Copa Del Rey",
+          embedCode: `<iframe id="sofa-cupTree-embed-329-82988-10837228" src="https://widgets.sofascore.com/embed/unique-tournament/329/season/82988/cuptree/10837228?widgetTitle=Copa del Rey 25/26&showCompetitionLogo=true&widgetTheme=light" style=height:872px!important;max-width:700px!important;width:100%!important; frameborder="0" scrolling="yes"></iframe>
+    <div style="font-size:12px;font-family:Arial,sans-serif;text-align:left">
+      Cup tree provided by <a target="_blank" href="https://www.sofascore.com/tournament/football/spain/copa-del-rey/329#id:82988">Sofascore</a>
+    </div>`,
+        },
+
+        {
+          id: "supercopadeespana",
+          type: "cup",
+          title: "Supercopa De Espana",
+          embedCode: `<iframe id="sofa-cupTree-embed-213-78978-10825898" src="https://widgets.sofascore.com/embed/unique-tournament/213/season/78978/cuptree/10825898?widgetTitle=Supercopa 2026&showCompetitionLogo=true&widgetTheme=light" style=height:508px!important;max-width:700px!important;width:100%!important; frameborder="0" scrolling="yes"></iframe>
+    <div style="font-size:12px;font-family:Arial,sans-serif;text-align:left">
+      Cup tree provided by <a target="_blank" href="https://www.sofascore.com/tournament/football/spain/supercopa-de-espana/213#id:78978">Sofascore</a>
+    </div>`,
+        },
+
+        {
+          id: "uefachampionsleague",
+          type: "cup",
+          title: "UEFA Champions League",
+          embedCode: `<iframe id="sofa-standings-embed-138314-76953" src="https://widgets.sofascore.com/embed/tournament/138314/season/76953/standings/UEFA%20Champions%20League%2025%2F26?widgetTitle=UEFA%20Champions%20League%2025%2F26&showCompetitionLogo=true" style=height:1763px!important;max-width:768px!important;width:100%!important; frameborder="0" scrolling="no"></iframe>
+    <div style="font-size:12px;font-family:Arial,sans-serif;text-align:left">
+      Standings provided by <a target="_blank" href="https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:76953">Sofascore</a>
+    </div>`,
+        },
+
+        /* TEMPLATE FOR NEW TABS:
+            { id: 'unique-id', type: 'league', title: 'Name', embedCode: `` },
+            */
+      ];
+
+      let activeId = null;
+      let isEditing = false;
+      let isSidebarOpen = true;
+
+      const icons = {
+        league: "shield",
+        cup: "trophy",
+        club: "users",
+      };
+
+      // Initialize
+      function init() {
+        renderTabs();
+        lucide.createIcons();
+        if (sections.length > 0) setActiveTab(sections[0].id);
+      }
+
+      function renderTabs() {
+        const list = document.getElementById("tabs-list");
+        list.innerHTML = "";
+        sections.forEach((s) => {
+          const btn = document.createElement("button");
+          btn.className = `w-full flex items-center gap-3 p-3 rounded-lg transition-colors group relative ${
+            s.id === activeId
+              ? "active-tab"
+              : "hover:bg-slate-900 text-slate-400 hover:text-slate-200"
+          }`;
+          btn.onclick = () => setActiveTab(s.id);
+
+          btn.innerHTML = `
+                    <i data-lucide="${icons[s.type] || "layout"}" size="18"></i>
+                    ${
+                      isSidebarOpen
+                        ? `<span class="truncate text-sm font-medium">${s.title}</span>`
+                        : ""
+                    }
+                    ${
+                      isSidebarOpen
+                        ? `
+                        <div class="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded transition-all" onclick="event.stopPropagation(); deleteTab('${s.id}')">
+                            <i data-lucide="trash-2" size="14"></i>
+                        </div>
+                    `
+                        : ""
+                    }
+                `;
+          list.appendChild(btn);
+        });
+        lucide.createIcons();
+      }
+
+      function setActiveTab(id) {
+        activeId = id;
+        isEditing = false;
+        const section = sections.find((s) => s.id === id);
+
+        document.getElementById("welcome-state").classList.add("hidden");
+        document.getElementById("app-header").classList.remove("hidden");
+
+        // Update Header
+        document.getElementById("header-title").innerText = section.title;
+        document.getElementById("header-type").innerText = section.type;
+        document.getElementById("header-icon").innerHTML = `<i data-lucide="${
+          icons[section.type]
+        }" size="20"></i>`;
+
+        updateDisplay();
+        renderTabs();
+      }
+
+      function updateDisplay() {
+        const section = sections.find((s) => s.id === activeId);
+        const viewMode = document.getElementById("view-mode");
+        const editPanel = document.getElementById("edit-panel");
+        const emptyState = document.getElementById("empty-widget-state");
+        const embedContainer = document.getElementById("embed-container");
+        const editBtn = document.getElementById("edit-btn");
+        const editBtnText = document.getElementById("edit-btn-text");
+
+        if (isEditing) {
+          viewMode.classList.add("hidden");
+          editPanel.classList.remove("hidden");
+          document.getElementById("embed-textarea").value = section.embedCode;
+          editBtn.classList.add("bg-green-600", "text-white");
+          editBtn.classList.remove("bg-slate-800", "text-slate-300");
+          editBtn.innerHTML = `<i data-lucide="save" size="16"></i><span>Done Editing</span>`;
+        } else {
+          editPanel.classList.add("hidden");
+          viewMode.classList.remove("hidden");
+          editBtn.classList.remove("bg-green-600", "text-white");
+          editBtn.classList.add("bg-slate-800", "text-slate-300");
+          editBtn.innerHTML = `<i data-lucide="settings" size="16"></i><span>Configure</span>`;
+
+          if (section.embedCode) {
+            emptyState.classList.add("hidden");
+            embedContainer.classList.remove("hidden");
+            safeRender(section.embedCode);
+          } else {
+            emptyState.classList.remove("hidden");
+            embedContainer.classList.add("hidden");
+            embedContainer.innerHTML = "";
+          }
+        }
+        lucide.createIcons();
+      }
+
+      function safeRender(html) {
+        const container = document.getElementById("embed-container");
+        container.innerHTML = "";
+
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+
+        const scripts = Array.from(tempDiv.querySelectorAll("script"));
+        scripts.forEach((s) => s.remove());
+
+        container.innerHTML = tempDiv.innerHTML;
+
+        scripts.forEach((oldScript) => {
+          const newScript = document.createElement("script");
+          Array.from(oldScript.attributes).forEach((attr) =>
+            newScript.setAttribute(attr.name, attr.value)
+          );
+          if (oldScript.innerHTML)
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          container.appendChild(newScript);
+        });
+      }
+
+      function toggleEditMode() {
+        isEditing = !isEditing;
+        updateDisplay();
+      }
+
+      function saveEmbed() {
+        const code = document.getElementById("embed-textarea").value;
+        const index = sections.findIndex((s) => s.id === activeId);
+        sections[index].embedCode = code;
+        isEditing = false;
+        updateDisplay();
+      }
+
+      function toggleSidebar() {
+        isSidebarOpen = !isSidebarOpen;
+        const sidebar = document.getElementById("sidebar");
+        const logo = document.getElementById("logo-text");
+        const addText = document.getElementById("add-tab-text");
+
+        sidebar.style.width = isSidebarOpen ? "16rem" : "4rem";
+        logo.style.display = isSidebarOpen ? "block" : "none";
+        addText.style.display = isSidebarOpen ? "block" : "none";
+
+        renderTabs();
+      }
+
+      function openModal() {
+        document.getElementById("modal-overlay").classList.remove("hidden");
+      }
+      function closeModal() {
+        document.getElementById("modal-overlay").classList.add("hidden");
+      }
+
+      function addNewTab() {
+        const title = document.getElementById("modal-title").value;
+        const type = document.querySelector(
+          'input[name="modal-type"]:checked'
+        ).value;
+        if (!title) return;
+
+        const newTab = {
+          id: Date.now().toString(),
+          title,
+          type,
+          embedCode: "",
+        };
+        sections.push(newTab);
+        setActiveTab(newTab.id);
+        closeModal();
+        document.getElementById("modal-title").value = "";
+      }
+
+      function deleteTab(id) {
+        sections = sections.filter((s) => s.id !== id);
+        if (activeId === id) {
+          if (sections.length > 0) setActiveTab(sections[0].id);
+          else {
+            activeId = null;
+            document.getElementById("app-header").classList.add("hidden");
+            document.getElementById("view-mode").classList.add("hidden");
+            document.getElementById("welcome-state").classList.remove("hidden");
+          }
+        }
+        renderTabs();
+      }
+
+      window.onload = init;
+    </script>
+  </body>
+</html>
